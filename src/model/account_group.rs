@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use glib::prelude::*;
+use gtk::glib::prelude::*;
 use gtk::prelude::*;
 use log::error;
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ pub struct AccountGroupWidget {
     pub edit_button: gtk::Button,
     pub delete_button: gtk::Button,
     pub add_account_button: gtk::Button,
-    pub event_box: gtk::EventBox,
+    pub event_box: gtk::Box,
     pub group_label: gtk::Label,
     pub group_image: gtk::Image,
     pub popover: gtk::PopoverMenu,
@@ -44,6 +44,8 @@ impl AccountGroupWidget {
         let account_widgets = self.account_widgets.clone();
         let mut account_widgets = account_widgets.borrow_mut();
         account_widgets.iter_mut().for_each(|account| account.update());
+
+        unimplemented!()
     }
 }
 
@@ -63,16 +65,17 @@ impl AccountGroup {
         let builder = gtk::Builder::from_resource(format!("{}/{}", NAMESPACE_PREFIX, "account_group.ui").as_str());
 
         let container: gtk::Box = builder.get_object("group").unwrap();
-        container.set_widget_name(format!("group_id_{}", self.id).as_str());
+        gtk::WidgetExt::set_name(&container, format!("group_id_{}", self.id).as_str());
 
         //allows for group labels to respond to click events
-        let event_box: gtk::EventBox = builder.get_object("event_box").unwrap();
+        let event_box: gtk::Box = builder.get_object("event_box").unwrap();
 
         let group_image: gtk::Image = builder.get_object("group_image").unwrap();
 
         if let Some(image) = &self.icon {
             let dir = ConfigManager::icons_path(&image);
-            match IconParser::load_icon(&dir, state.dark_mode) {
+            match IconParser::load_icon(&dir, false) {
+                // match IconParser::load_icon(&dir, state.dark_mode) {
                 Ok(pixbuf) => group_image.set_from_pixbuf(Some(&pixbuf)),
                 Err(_) => error!("Could not load image {}", dir.display()),
             };
@@ -98,7 +101,7 @@ impl AccountGroup {
         // This would normally be defined within account_group.ui.
         // However doing so produces annoying (yet seemingly harmless) warnings:
         // Gtk-WARNING **: 20:26:01.739: Child name 'main' not found in GtkStack
-        popover.add(&buttons_container);
+        popover.add_child(&buttons_container, &format!("buttons_container_{}", self.id));
 
         let accounts: gtk::Box = builder.get_object("accounts").unwrap();
 
@@ -107,7 +110,7 @@ impl AccountGroup {
             .iter()
             .map(|account| {
                 let widget = account.widget();
-                accounts.add(&widget.grid);
+                accounts.append(&widget.grid);
                 widget
             })
             .collect();
@@ -119,17 +122,17 @@ impl AccountGroup {
             let delete_button = delete_button.clone();
             let popover = popover.clone();
 
-            event_box
-                .connect_local("button-press-event", false, move |_| {
-                    let account_widgets = account_widgets.borrow();
-
-                    delete_button.set_sensitive(account_widgets.is_empty());
-
-                    popover.show_all();
-
-                    Some(true.to_value())
-                })
-                .expect("Could not associate handler");
+            //     event_box
+            //         .connect_local("button-press-event", false, move |_| {
+            //             let account_widgets = account_widgets.borrow();
+            //
+            //             delete_button.set_sensitive(account_widgets.is_empty());
+            //
+            //             popover.show_all();
+            //
+            //             Some(true.to_value())
+            //         })
+            //         .expect("Could not associate handler");
         }
 
         AccountGroupWidget {

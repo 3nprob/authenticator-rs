@@ -1,28 +1,44 @@
-extern crate gio;
-extern crate glib;
-extern crate gtk;
-
-use std::sync::{Arc, Mutex};
-
-use gettextrs::*;
-use gio::prelude::*;
-use gtk::prelude::*;
-use log::info;
-use log4rs::config::Config;
-use log4rs::file::{Deserializers, RawConfig};
-use rusqlite::Connection;
-
-use main_window::MainWindow;
-
-use crate::helpers::runner;
-use crate::helpers::ConfigManager;
-
-mod main_window;
-
 mod exporting;
 mod helpers;
+mod main_window;
 mod model;
 mod ui;
+
+// extern crate gio;
+// extern crate glib;
+extern crate gtk;
+// extern crate gdk;
+
+use gtk::gdk::Display;
+use gtk::{
+    Application, ApplicationWindow, Box as Box_, Button, ComboBoxText, CssProvider, Entry, Orientation, StyleContext, STYLE_PROVIDER_PRIORITY_APPLICATION,
+};
+
+// use std::sync::{Arc, Mutex};
+//
+use gettextrs::*;
+use gtk::prelude::*;
+use log::info;
+use rusqlite::Connection;
+//
+// use main_window::MainWindow;
+//
+// use crate::helpers::runner;
+// use crate::helpers::ConfigManager;
+
+// mod main_window;
+//
+// mod exporting;
+// mod helpers;
+// mod model;
+// mod ui;
+
+use crate::helpers::{runner, ConfigManager};
+use crate::main_window::MainWindow;
+use log4rs::config::Config;
+use log4rs::file::{Deserializers, RawConfig};
+use std::env::args;
+use std::sync::{Arc, Mutex};
 
 const NAMESPACE: &str = "uk.co.grumlimited.authenticator-rs";
 const NAMESPACE_PREFIX: &str = "/uk/co/grumlimited/authenticator-rs";
@@ -32,13 +48,13 @@ const LOCALEDIR: &str = "/usr/share/locale";
 
 fn main() {
     let resource = {
-        match gio::Resource::load(format!("data/{}.gresource", NAMESPACE)) {
+        match gtk::gio::Resource::load(format!("data/{}.gresource", NAMESPACE)) {
             Ok(resource) => resource,
-            Err(_) => gio::Resource::load(format!("/usr/share/{}/{}.gresource", NAMESPACE, NAMESPACE)).unwrap(),
+            Err(_) => gtk::gio::Resource::load(format!("/usr/share/{}/{}.gresource", NAMESPACE, NAMESPACE)).unwrap(),
         }
     };
 
-    gio::functions::resources_register(&resource);
+    gtk::gio::functions::resources_register(&resource);
 
     let application = gtk::Application::new(Some(NAMESPACE), Default::default()).expect("Initialization failed...");
 
@@ -46,10 +62,10 @@ fn main() {
         let provider = gtk::CssProvider::new();
         provider.load_from_resource(format!("{}/{}", NAMESPACE_PREFIX, "style.css").as_str());
 
-        gtk::StyleContext::add_provider_for_screen(
-            &gdk::Screen::get_default().expect("Error initializing gtk css provider."),
+        StyleContext::add_provider_for_display(
+            &Display::get_default().expect("Error initializing gtk css provider."),
             &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
 
         // Prepare i18n
@@ -89,7 +105,7 @@ fn main() {
 */
 fn configure_logging() {
     let log4rs_yaml =
-        gio::functions::resources_lookup_data(format!("{}/{}", NAMESPACE_PREFIX, "log4rs.yaml").as_str(), gio::ResourceLookupFlags::NONE).unwrap();
+        gtk::gio::functions::resources_lookup_data(format!("{}/{}", NAMESPACE_PREFIX, "log4rs.yaml").as_str(), gtk::gio::ResourceLookupFlags::NONE).unwrap();
     let log4rs_yaml = log4rs_yaml.to_vec();
     let log4rs_yaml = String::from_utf8(log4rs_yaml).unwrap();
 

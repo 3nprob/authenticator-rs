@@ -892,10 +892,11 @@
                 <property name="halign">center</property>
                 <property name="margin-top">60</property>
                 <child>
-                  <object class="GtkEventBox" id="no_accounts_plus_sign">
+                  <object class="GtkBox" id="no_accounts_plus_sign">
                     <property name="name">no_accounts_plus_sign</property>
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
+                    <property name="orientation">vertical</property>
                     <child>
                       <object class="GtkImage">
                         <property name="visible">True</property>
@@ -904,6 +905,17 @@
                         <property name="pixel-size">32</property>
                         <property name="icon-name">list-add-symbolic</property>
                       </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                    <child>
+                      <placeholder/>
                     </child>
                   </object>
                   <packing>

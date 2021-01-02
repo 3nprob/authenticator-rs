@@ -6,7 +6,7 @@ use chrono::prelude::*;
 use chrono::Local;
 use futures::join;
 use gettextrs::*;
-use glib::{Receiver, Sender};
+use gtk::glib::{Receiver, Sender};
 use gtk::prelude::*;
 use gtk::Builder;
 use log::{debug, error, warn};
@@ -15,6 +15,7 @@ use rusqlite::Connection;
 use crate::helpers::{ConfigManager, IconParser};
 use crate::main_window::{Display, MainWindow};
 use crate::model::{AccountGroup, AccountGroupWidget};
+// use crate::ui::{AddGroupWindow, EditAccountWindow};
 use crate::ui::{AddGroupWindow, EditAccountWindow};
 use crate::NAMESPACE_PREFIX;
 
@@ -46,8 +47,8 @@ impl AccountsWindow {
     }
 
     fn delete_account_reload(&self, gui: &MainWindow, account_id: u32, connection: Arc<Mutex<Connection>>) {
-        let (tx, rx) = glib::MainContext::channel::<(Vec<AccountGroup>, bool)>(glib::PRIORITY_DEFAULT);
-        let (tx_done, rx_done) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT);
+        let (tx, rx) = gtk::glib::MainContext::channel::<(Vec<AccountGroup>, bool)>(gtk::glib::PRIORITY_DEFAULT);
+        let (tx_done, rx_done) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT);
 
         rx.attach(None, self.replace_accounts_and_widgets(gui.clone(), connection.clone()));
 
@@ -77,15 +78,15 @@ impl AccountsWindow {
         // upon completion of `f`, restores sensitivity to accounts_container
         rx.attach(None, move |_| {
             accounts_container.set_sensitive(true);
-            glib::Continue(true)
+            gtk::glib::Continue(true)
         });
 
         f
     }
 
     fn delete_group_reload(&self, gui: &MainWindow, group_id: u32, connection: Arc<Mutex<Connection>>) {
-        let (tx, rx) = glib::MainContext::channel::<(Vec<AccountGroup>, bool)>(glib::PRIORITY_DEFAULT);
-        let (tx_done, rx_done) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT);
+        let (tx, rx) = gtk::glib::MainContext::channel::<(Vec<AccountGroup>, bool)>(gtk::glib::PRIORITY_DEFAULT);
+        let (tx_done, rx_done) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT);
 
         rx.attach(None, self.replace_accounts_and_widgets(gui.clone(), connection.clone()));
 
@@ -109,8 +110,8 @@ impl AccountsWindow {
     }
 
     pub fn refresh_accounts(&self, gui: &MainWindow, connection: Arc<Mutex<Connection>>) {
-        let (tx, rx) = glib::MainContext::channel::<(Vec<AccountGroup>, bool)>(glib::PRIORITY_DEFAULT);
-        let (tx_done, rx_done) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT);
+        let (tx, rx) = gtk::glib::MainContext::channel::<(Vec<AccountGroup>, bool)>(gtk::glib::PRIORITY_DEFAULT);
+        let (tx_done, rx_done) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT);
 
         rx.attach(None, self.replace_accounts_and_widgets(gui.clone(), connection.clone()));
 
@@ -134,20 +135,20 @@ impl AccountsWindow {
         &self,
         gui: MainWindow,
         connection: Arc<Mutex<Connection>>,
-    ) -> Box<dyn FnMut((Vec<AccountGroup>, bool)) -> glib::Continue> {
+    ) -> Box<dyn FnMut((Vec<AccountGroup>, bool)) -> gtk::glib::Continue> {
         Box::new(move |(groups, has_groups)| {
             {
                 let accounts_container = gui.accounts_window.accounts_container.clone();
                 let mut m_widgets = gui.accounts_window.widgets.lock().unwrap();
 
                 // empty list of accounts first
-                accounts_container.foreach(|e| accounts_container.remove(e));
+                // accounts_container.foreach(|e| accounts_container.remove(e));
 
                 *m_widgets = groups.iter().map(|group| group.widget(gui.state.clone())).collect();
 
                 m_widgets
                     .iter()
-                    .for_each(|account_group_widget| accounts_container.add(&account_group_widget.container));
+                    .for_each(|account_group_widget| accounts_container.append(&account_group_widget.container));
             }
 
             if has_groups {
@@ -160,7 +161,7 @@ impl AccountsWindow {
                 gui.switch_to(Display::DisplayNoAccounts);
             }
 
-            glib::Continue(true)
+            gtk::glib::Continue(true)
         })
     }
 
@@ -260,14 +261,14 @@ impl AccountsWindow {
                 let gui = gui.clone();
 
                 {
-                    let (tx, rx) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT);
+                    let (tx, rx) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT);
 
                     {
                         let copy_button = account_widget.copy_button.clone();
                         let edit_copy_img = account_widget.edit_copy_img.clone();
                         rx.attach(None, move |_| {
-                            copy_button.set_image(Some(&edit_copy_img));
-                            glib::Continue(true)
+                            // copy_button.set_image(Some(&edit_copy_img));
+                            gtk::glib::Continue(true)
                         });
                     }
 
@@ -276,7 +277,7 @@ impl AccountsWindow {
                         let pool = gui.pool.clone();
                         let dialog_ok_img = account_widget.dialog_ok_img.clone();
                         copy_button.connect_clicked(move |button| {
-                            button.set_image(Some(&dialog_ok_img));
+                            // button.set_image(Some(&dialog_ok_img));
 
                             pool.spawn_ok(times_up(tx.clone(), 2000));
                         });
@@ -303,7 +304,7 @@ impl AccountsWindow {
                     edit_account.input_account_id.set_text(account_id.as_str());
                     edit_account.input_name.set_text(account.label.as_str());
 
-                    let buffer = edit_account.input_secret.get_buffer().unwrap();
+                    let buffer = edit_account.input_secret.get_buffer();
                     buffer.set_text(account.secret.as_str());
 
                     popover.hide();
@@ -341,7 +342,7 @@ impl AccountsWindow {
                     confirm_button.show();
                     delete_button.hide();
 
-                    let (tx, rx) = glib::MainContext::channel::<u8>(glib::PRIORITY_DEFAULT);
+                    let (tx, rx) = gtk::glib::MainContext::channel::<u8>(gtk::glib::PRIORITY_DEFAULT);
 
                     let confirm_button = confirm_button.clone();
                     let delete_button = delete_button.clone();
@@ -354,7 +355,7 @@ impl AccountsWindow {
                             confirm_button_label.set_text(&format!("{} ({}s)", &gettext("Confirm"), second));
                         }
 
-                        glib::Continue(true)
+                        gtk::glib::Continue(true)
                     });
 
                     pool.spawn_ok(update_button(tx, 5));
@@ -409,13 +410,9 @@ impl AccountsWindow {
     }
 
     pub fn get_filter_value(&self) -> Option<String> {
-        let filter_text = self.filter.get_text();
+        let filter_text = self.filter.get_text().map(|e| e.to_string());
 
-        if filter_text.is_empty() {
-            None
-        } else {
-            Some(filter_text.to_owned())
-        }
+        filter_text
     }
 }
 

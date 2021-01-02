@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
@@ -58,12 +58,12 @@ impl AddGroupWindow {
     }
 
     pub fn replace_with(&self, other: &AddGroupWindow) {
-        self.container.get_children().iter().for_each(|w| self.container.remove(w));
-
-        other.container.get_children().iter().for_each(|w| {
-            other.container.remove(w);
-            self.container.add(w)
-        });
+        // self.container.get_children().iter().for_each(|w| self.container.remove(w));
+        //
+        // other.container.get_children().iter().for_each(|w| {
+        //     other.container.remove(w);
+        //     self.container.append(w)
+        // });
     }
 
     fn validate(&self) -> Result<(), ValidationError> {
@@ -93,7 +93,7 @@ impl AddGroupWindow {
         self.save_button.set_sensitive(true);
         self.icon_reload.set_sensitive(true);
         self.icon_delete.set_sensitive(true);
-        self.image_input.set_from_icon_name(Some("content-loading-symbolic"), IconSize::Button);
+        self.image_input.set_from_icon_name(Some("content-loading-symbolic"));
 
         self.input_group.set_property_primary_icon_name(None);
         let style_context = self.input_group.get_style_context();
@@ -107,12 +107,12 @@ impl AddGroupWindow {
         let image_button = self.image_button.clone();
         let dialog = self.image_dialog.clone();
 
-        let (tx, rx) = glib::MainContext::channel::<anyhow::Result<AccountGroupIcon>>(glib::PRIORITY_DEFAULT);
+        let (tx, rx) = gtk::glib::MainContext::channel::<anyhow::Result<AccountGroupIcon>>(gtk::glib::PRIORITY_DEFAULT);
 
         {
             let icon_reload = icon_reload.clone();
             url_input.connect_activate(move |_| {
-                icon_reload.clicked();
+                icon_reload.emit_clicked();
             });
         }
 
@@ -120,24 +120,33 @@ impl AddGroupWindow {
             let icon_filename = self.icon_filename.clone();
             let image_input = self.image_input.clone();
             let state = state.clone();
-            image_button.connect_clicked(move |_| match dialog.run() {
-                gtk::ResponseType::Accept => {
-                    dialog.hide();
+            image_button.connect_clicked(move |_| {
+                dialog.show();
 
-                    let path = dialog.get_filename().unwrap();
-                    debug!("path: {}", path.display());
+                let state = state.clone();
+                let image_input = image_input.clone();
+                let icon_filename = icon_filename.clone();
+                dialog.connect_response(move |w, response| match response {
+                    gtk::ResponseType::Accept => {
+                        w.hide();
 
-                    match fs::read(&path) {
-                        Ok(bytes) => {
-                            let filename = path.file_name().unwrap();
-                            debug!("filename: {:?}", filename);
+                        let path = w.get_file().unwrap();
+                        let path = PathBuf::from(path.to_string());
 
-                            Self::write_tmp_icon(state.clone(), icon_filename.clone(), image_input.clone(), bytes.as_slice());
+                        debug!("path: {:?}", path);
+
+                        match fs::read(&path) {
+                            Ok(bytes) => {
+                                let filename = path.file_name().unwrap();
+                                debug!("filename: {:?}", filename);
+
+                                Self::write_tmp_icon(state.clone(), icon_filename.clone(), image_input.clone(), bytes.as_slice());
+                            }
+                            Err(_) => warn!("Could not read file {:?}", &path),
                         }
-                        Err(_) => warn!("Could not read file {}", &path.display()),
                     }
-                }
-                _ => dialog.hide(),
+                    _ => w.hide(),
+                });
             });
         }
 
@@ -160,7 +169,7 @@ impl AddGroupWindow {
 
                     save_button.set_sensitive(false);
                     icon_reload.set_sensitive(false);
-                    image_input.set_from_icon_name(Some("content-loading-symbolic"), IconSize::Button);
+                    image_input.set_from_icon_name(Some("content-loading-symbolic"));
 
                     pool.spawn_ok(fut);
                 }
@@ -187,7 +196,7 @@ impl AddGroupWindow {
                     }
                 }
 
-                glib::Continue(true)
+                gtk::glib::Continue(true)
             });
         }
 
@@ -204,7 +213,7 @@ impl AddGroupWindow {
                 icon_error.set_label("");
                 icon_error.set_visible(false);
 
-                image_input.set_from_icon_name(Some("content-loading-symbolic"), IconSize::Button);
+                image_input.set_from_icon_name(Some("content-loading-symbolic"));
             });
         }
     }
@@ -233,9 +242,9 @@ impl AddGroupWindow {
                     let group_id = add_group.group_id.get_label();
                     let group_id = group_id.as_str().to_owned();
 
-                    let (tx, rx) = glib::MainContext::channel::<(Vec<AccountGroup>, bool)>(glib::PRIORITY_DEFAULT);
-                    let (tx_done, rx_done) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT);
-                    let (tx_reset, rx_reset) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT); // used to signal adding group is completed
+                    let (tx, rx) = gtk::glib::MainContext::channel::<(Vec<AccountGroup>, bool)>(gtk::glib::PRIORITY_DEFAULT);
+                    let (tx_done, rx_done) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT);
+                    let (tx_reset, rx_reset) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT); // used to signal adding group is completed
 
                     rx.attach(None, gui.accounts_window.replace_accounts_and_widgets(gui.clone(), connection.clone()));
 
@@ -243,7 +252,7 @@ impl AddGroupWindow {
                     rx_reset.attach(None, move |_| {
                         // upon completion, reset form
                         add_group.reset();
-                        glib::Continue(true)
+                        gtk::glib::Continue(true)
                     });
 
                     let filter = gui.accounts_window.get_filter_value();

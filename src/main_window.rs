@@ -4,7 +4,6 @@ use std::sync::{Arc, Mutex};
 
 use chrono::prelude::*;
 use futures_executor::ThreadPool;
-use gio::prelude::SettingsExt;
 use gtk::prelude::*;
 use rusqlite::Connection;
 
@@ -44,7 +43,7 @@ pub enum Display {
 
 impl Default for State {
     fn default() -> Self {
-        let g_settings = gio::Settings::new(NAMESPACE);
+        let g_settings = gtk::gio::Settings::new(NAMESPACE);
 
         State {
             dark_mode: g_settings.get_boolean("dark-theme"),
@@ -70,33 +69,33 @@ impl MainWindow {
             let popup = about_popup.clone();
             let add_group_save: gtk::Button = builder.get_object("add_group_save").unwrap();
             let edit_account_save: gtk::Button = builder.get_object("edit_account_save").unwrap();
-            builder.connect_signals(move |_, handler_name| {
-                match handler_name {
-                    // handler_name as defined in the glade file
-                    "about_popup_close" => {
-                        let popup = popup.clone();
-                        Box::new(move |_| {
-                            popup.hide();
-                            None
-                        })
-                    }
-                    "save_group" => {
-                        let add_group_save = add_group_save.clone();
-                        Box::new(move |_| {
-                            add_group_save.clicked();
-                            None
-                        })
-                    }
-                    "save_account" => {
-                        let edit_account_save = edit_account_save.clone();
-                        Box::new(move |_| {
-                            edit_account_save.clicked();
-                            None
-                        })
-                    }
-                    _ => Box::new(|_| None),
-                }
-            });
+            // builder.connect_signals(move |_, handler_name| {
+            //     match handler_name {
+            //         // handler_name as defined in the glade file
+            //         "about_popup_close" => {
+            //             let popup = popup.clone();
+            //             Box::new(move |_| {
+            //                 popup.hide();
+            //                 None
+            //             })
+            //         }
+            //         "save_group" => {
+            //             let add_group_save = add_group_save.clone();
+            //             Box::new(move |_| {
+            //                 add_group_save.clicked();
+            //                 None
+            //             })
+            //         }
+            //         "save_account" => {
+            //             let edit_account_save = edit_account_save.clone();
+            //             Box::new(move |_| {
+            //                 edit_account_save.clicked();
+            //                 None
+            //             })
+            //         }
+            //         _ => Box::new(|_| None),
+            //     }
+            // });
         }
 
         MainWindow {
@@ -115,7 +114,7 @@ impl MainWindow {
         let mut state = self.state.borrow_mut();
         state.display = display;
 
-        let g_settings = gio::Settings::new(NAMESPACE);
+        let g_settings = gtk::gio::Settings::new(NAMESPACE);
         state.dark_mode = g_settings.get_boolean("dark-theme");
 
         match state.display {
@@ -170,9 +169,8 @@ impl MainWindow {
         self.build_menus(connection.clone());
 
         let add_group = self.add_group.clone();
-        self.window.connect_delete_event(move |_, _| {
+        self.window.connect_destroy(move |_| {
             add_group.reset(); // to ensure temp files deletion
-            Inhibit(false)
         });
 
         self.bind_account_filter_events(connection.clone());
@@ -197,7 +195,7 @@ impl MainWindow {
 
         {
             //then bind "x" icon to empty the filter input.
-            let (tx, rx) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT);
+            let (tx, rx) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT);
 
             {
                 let _ = self.accounts_window.filter.connect("icon-press", true, move |_| {
@@ -210,7 +208,7 @@ impl MainWindow {
                 let filter = self.accounts_window.filter.clone();
                 rx.attach(None, move |_| {
                     filter.get_buffer().set_text("");
-                    glib::Continue(true)
+                    gtk::glib::Continue(true)
                 });
             }
         }
@@ -229,9 +227,9 @@ impl MainWindow {
                 widgets.iter_mut().for_each(|group| group.update());
             }
 
-            glib::Continue(true)
+            gtk::glib::Continue(true)
         };
 
-        glib::timeout_add_seconds_local(1, tick);
+        gtk::glib::timeout_add_seconds_local(1, tick);
     }
 }

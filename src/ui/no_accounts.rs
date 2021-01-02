@@ -4,7 +4,8 @@ use gtk::Builder;
 #[derive(Clone, Debug)]
 pub struct NoAccountsWindow {
     pub container: gtk::Box,
-    pub no_accounts_plus_sign: gtk::EventBox,
+    pub no_accounts_plus_sign: gtk::Box,
+    // pub no_accounts_plus_sign: gtk::EventBox,
 }
 
 impl NoAccountsWindow {

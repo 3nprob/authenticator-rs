@@ -1,7 +1,7 @@
 use anyhow::Result;
 use curl::easy::Easy;
-use gdk_pixbuf::Pixbuf;
-use glib::Sender;
+use gtk::gdk_pixbuf::Pixbuf;
+use gtk::glib::Sender;
 use log::debug;
 use regex::Regex;
 use scraper::*;

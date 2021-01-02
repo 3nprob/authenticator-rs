@@ -2,10 +2,12 @@ use crate::helpers::ConfigManager;
 use crate::main_window::MainWindow;
 use crate::NAMESPACE_PREFIX;
 use gettextrs::*;
-use glib::{Receiver, Sender};
+use gtk::cairo::glib::SignalHandlerId;
+use gtk::glib::{Receiver, Sender};
 use gtk::prelude::*;
 use gtk::{Button, PopoverMenu};
 use rusqlite::Connection;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 pub trait Exporting {
@@ -13,7 +15,7 @@ pub trait Exporting {
 
     fn import_accounts(&self, popover: gtk::PopoverMenu, connection: Arc<Mutex<Connection>>) -> Box<dyn Fn(&gtk::Button)>;
 
-    fn popup_close(popup: gtk::Window) -> Box<dyn Fn(&[glib::Value]) -> Option<glib::Value>>;
+    fn popup_close(popup: gtk::Window) -> Box<dyn Fn(&[gtk::glib::Value]) -> Option<gtk::glib::Value>>;
 }
 
 impl Exporting for MainWindow {
@@ -31,40 +33,46 @@ impl Exporting for MainWindow {
 
             export_account_error_body.set_label(&gettext("Could not export accounts!"));
 
-            builder.connect_signals(|_, handler_name| match handler_name {
-                "export_account_error_close" => Self::popup_close(export_account_error.clone()),
-                _ => Box::new(|_| None),
-            });
+            {
+                let export_account_error = export_account_error.clone();
+                builder.connect_local("export_account_error_close", true, move |e| {
+                    Self::popup_close(export_account_error.clone());
+                    None
+                });
+            }
 
             dialog.show();
+            let gui = gui.clone();
+            let connection = connection.clone();
+            dialog.connect_response(move |w, response| {
+                match response {
+                    gtk::ResponseType::Accept => {
+                        let path = w.get_file().unwrap();
+                        let path = PathBuf::from(path.to_string());
 
-            match dialog.run() {
-                gtk::ResponseType::Accept => {
-                    let path = dialog.get_filename().unwrap();
+                        let (tx, rx): (Sender<bool>, Receiver<bool>) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT);
 
-                    let (tx, rx): (Sender<bool>, Receiver<bool>) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT);
+                        // sensitivity is restored in refresh_accounts()
+                        // gui.accounts_window.accounts_container.set_sensitive(false);
+                        gui.pool.spawn_ok(ConfigManager::save_accounts(path, connection.clone(), tx));
 
-                    // sensitivity is restored in refresh_accounts()
-                    gui.accounts_window.accounts_container.set_sensitive(false);
-                    gui.pool.spawn_ok(ConfigManager::save_accounts(path, connection.clone(), tx));
+                        let export_account_error = export_account_error.clone();
+                        rx.attach(None, move |success| {
+                            if !success {
+                                export_account_error.set_title(Some(&gettext("Error")));
+                                export_account_error.show();
+                            }
 
-                    let gui = gui.clone();
-                    let connection = connection.clone();
-                    rx.attach(None, move |success| {
-                        if !success {
-                            export_account_error.set_title(&gettext("Error"));
-                            export_account_error.show_all();
-                        }
+                            // gui.accounts_window.refresh_accounts(&gui, connection.clone());
 
-                        gui.accounts_window.refresh_accounts(&gui, connection.clone());
+                            gtk::glib::Continue(true)
+                        });
 
-                        glib::Continue(true)
-                    });
-
-                    dialog.close();
+                        w.close();
+                    }
+                    _ => w.close(),
                 }
-                _ => dialog.close(),
-            }
+            });
         })
     }
 
@@ -78,50 +86,54 @@ impl Exporting for MainWindow {
             let dialog: gtk::FileChooserDialog = builder.get_object("dialog").unwrap();
 
             let export_account_error: gtk::Window = builder.get_object("error_popup").unwrap();
-            export_account_error.set_title(&gettext("Error"));
+            export_account_error.set_title(Some(&gettext("Error")));
 
             let export_account_error_body: gtk::Label = builder.get_object("error_popup_body").unwrap();
 
             export_account_error_body.set_label(&gettext("Could not import accounts!"));
 
-            builder.connect_signals(|_, handler_name| match handler_name {
-                "export_account_error_close" => Self::popup_close(export_account_error.clone()),
-                _ => Box::new(|_| None),
-            });
+            {
+                let export_account_error = export_account_error.clone();
+                builder.connect_local("export_account_error_close", true, move |e| {
+                    Self::popup_close(export_account_error.clone());
+                    None
+                });
+            }
 
             dialog.show();
+            let gui = gui.clone();
+            let connection = connection.clone();
+            dialog.connect_response(move |w, response| {
+                match response {
+                    gtk::ResponseType::Accept => {
+                        let path = w.get_file().unwrap();
+                        let path = PathBuf::from(path.to_string());
 
-            match dialog.run() {
-                gtk::ResponseType::Accept => {
-                    dialog.close();
+                        let (tx, rx): (Sender<bool>, Receiver<bool>) = gtk::glib::MainContext::channel::<bool>(gtk::glib::PRIORITY_DEFAULT);
 
-                    let path = dialog.get_filename().unwrap();
+                        // sensitivity is restored in refresh_accounts()
+                        // gui.accounts_window.accounts_container.set_sensitive(false);
+                        gui.pool.spawn_ok(ConfigManager::restore_account_and_signal_back(path, connection.clone(), tx));
 
-                    let (tx, rx): (Sender<bool>, Receiver<bool>) = glib::MainContext::channel::<bool>(glib::PRIORITY_DEFAULT);
+                        let export_account_error = export_account_error.clone();
+                        rx.attach(None, move |success| {
+                            if !success {
+                                export_account_error.show();
+                            }
 
-                    // sensitivity is restored in refresh_accounts()
-                    gui.accounts_window.accounts_container.set_sensitive(false);
-                    gui.pool.spawn_ok(ConfigManager::restore_account_and_signal_back(path, connection.clone(), tx));
+                            // gui.accounts_window.refresh_accounts(&gui, connection.clone());
 
-                    let gui = gui.clone();
-                    let connection = connection.clone();
-                    rx.attach(None, move |success| {
-                        if !success {
-                            export_account_error.show_all();
-                        }
-
-                        gui.accounts_window.refresh_accounts(&gui, connection.clone());
-
-                        glib::Continue(true)
-                    });
+                            gtk::glib::Continue(true)
+                        });
+                    }
+                    _ => w.close(),
                 }
-                _ => dialog.close(),
-            }
+            });
         })
     }
 
-    fn popup_close(popup: gtk::Window) -> Box<dyn Fn(&[glib::Value]) -> Option<glib::Value>> {
-        Box::new(move |_param: &[glib::Value]| {
+    fn popup_close(popup: gtk::Window) -> Box<dyn Fn(&[gtk::glib::Value]) -> Option<gtk::glib::Value>> {
+        Box::new(move |_param: &[gtk::glib::Value]| {
             popup.hide();
             None
         })

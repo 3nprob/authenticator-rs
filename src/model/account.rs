@@ -37,14 +37,16 @@ pub struct AccountWidget {
 
 impl AccountWidget {
     pub fn update(&mut self) {
-        match Account::generate_time_based_password(self.totp_secret.as_str()) {
-            Ok(totp) => self.totp_label.set_label(totp.as_str()),
-            Err(_) => {
-                self.totp_label.set_label(&format!("{} !", &gettext("Error")));
-                let context = self.totp_label.get_style_context();
-                context.add_class("error");
-            }
-        }
+        // match Account::generate_time_based_password(self.totp_secret.as_str()) {
+        //     Ok(totp) => self.totp_label.set_label(totp.as_str()),
+        //     Err(_) => {
+        //         self.totp_label.set_label(&format!("{} !", &gettext("Error")));
+        //         let context = self.totp_label.get_style_context();
+        //         context.add_class("error");
+        //     }
+        // }
+
+        unimplemented!()
     }
 }
 
@@ -63,7 +65,7 @@ impl Account {
 
         let grid: gtk::Grid = builder.get_object("grid").unwrap();
 
-        grid.set_widget_name(format!("account_id_{}", self.id).as_str());
+        gtk::WidgetExt::set_name(&grid, format!("account_id_{}", self.id).as_str());
 
         let label: gtk::Label = builder.get_object("account_name").unwrap();
         label.set_label(self.label.as_str());
@@ -88,13 +90,13 @@ impl Account {
             let edit_button = edit_button.clone();
             let delete_button = delete_button.clone();
             let confirm_button = confirm_button.clone();
-            menu.connect_clicked(move |_| {
-                edit_button.show();
-
-                if !confirm_button.is_visible() {
-                    delete_button.show();
-                }
-            });
+            // menu.connect_clicked(move |_| {
+            //     // edit_button.show();
+            //     //
+            //     // if !confirm_button.is_visible() {
+            //     //     delete_button.show();
+            //     // }
+            // });
         }
 
         let totp_label: gtk::Label = builder.get_object("totp_label").unwrap();
@@ -110,7 +112,7 @@ impl Account {
         let totp_label_clone = totp_label.clone();
 
         copy_button.connect_clicked(move |_| {
-            let clipboard = gtk::Clipboard::get(&gdk::SELECTION_CLIPBOARD);
+            let clipboard = gtk::gdk::Display::get_default().expect("No display").get_clipboard();
             clipboard.set_text(totp_label_clone.get_label().as_str());
         });
 

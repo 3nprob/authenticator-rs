@@ -170,27 +170,6 @@
         <property name="margin-bottom">20</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkEventBox" id="event_box">
-            <property name="name">event_box</property>
-            <property name="visible">True</property>
-            <property name="can-focus">False</property>
-            <child>
-              <object class="GtkLabel" id="group_label">
-                <property name="name">group_label</property>
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <style>
-                  <class name="group_label_button"/>
-                </style>
-              </object>
-            </child>
-          </object>
-          <packing>
-            <property name="left-attach">1</property>
-            <property name="top-attach">0</property>
-          </packing>
-        </child>
-        <child>
           <object class="GtkImage" id="group_image">
             <property name="name">group_image</property>
             <property name="width-request">0</property>
@@ -205,6 +184,39 @@
           </object>
           <packing>
             <property name="left-attach">0</property>
+            <property name="top-attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox" id="event_box">
+            <property name="name">event_box</property>
+            <property name="visible">True</property>
+            <property name="can-focus">False</property>
+            <property name="orientation">vertical</property>
+            <child>
+              <object class="GtkLabel" id="group_label">
+                <property name="name">group_label</property>
+                <property name="visible">True</property>
+                <property name="can-focus">False</property>
+                <style>
+                  <class name="group_label_button"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+            <child>
+              <placeholder/>
+            </child>
+          </object>
+          <packing>
+            <property name="left-attach">1</property>
             <property name="top-attach">0</property>
           </packing>
         </child>
@@ -243,7 +255,6 @@
   <object class="GtkPopoverMenu" id="popover">
     <property name="name">popover</property>
     <property name="can-focus">False</property>
-    <property name="relative-to">event_box</property>
     <property name="position">right</property>
     <child>
       <placeholder/>
